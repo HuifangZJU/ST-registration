@@ -848,6 +848,7 @@ for id in sample_list:
     spatial_locations = positions_filtered[["pxl_row_in_fullres", "pxl_col_in_fullres"]].to_numpy()
     adatas[id].image_coor = spatial_locations
 
+
 sample_groups = [["151507", "151508", "151509","151510"],[ "151669", "151670","151671", "151672"],[ "151673","151674", "151675", "151676"]]
 # sample_groups = [[ "151669", "151670","151671", "151672"],[ "151673","151674", "151675", "151676"]]
 

@@ -281,37 +281,7 @@ def get_uv_coordinates(slice):
     with open(scale_path, 'r') as f:
         data = json.load(f)
         low_res_scale = data['tissue_hires_scalef']
-
-    position_prefix = slice.spatial_prefix
-    try:
-        # Try reading as CSV
-        positions = pd.read_csv(position_prefix + '.csv', header=None, sep=',')
-    except (FileNotFoundError, pd.errors.EmptyDataError, pd.errors.ParserError):
-        positions = pd.read_csv(position_prefix + '.txt', header=None, sep=',')
-    slice.obs['position'].index = (
-        slice.obs['position'].index
-        .str.replace(r"\.\d+$", "", regex=True)
-    )
-    positions.columns = [
-        "barcode",
-        "in_tissue",
-        "array_row",
-        "array_col",
-        "pxl_col_in_fullres",
-        "pxl_row_in_fullres",
-    ]
-    # 1) Get the barcodes from AnnData that are in `positions`
-    positions.index = positions["barcode"]
-    adata_barcodes = slice.obs['position'].index
-    common_barcodes = adata_barcodes[adata_barcodes.isin(positions.index)]
-
-    # 2) Now reindex `positions` in the exact order of `common_barcodes`
-    positions_filtered = positions.reindex(common_barcodes)
-
-    spatial_locations = positions_filtered[["pxl_row_in_fullres", "pxl_col_in_fullres"]].to_numpy()
-
-    # spatial_locations = slice.image_coor
-    uv_coords = spatial_locations * low_res_scale
+    uv_coords = slice.image_coor * low_res_scale
     return uv_coords, image
 
 
@@ -429,12 +399,9 @@ layer_to_color_map['WM'] = 6
 for k,slices in enumerate(layer_groups):
 
     for sl in slices:
-        sc.pp.filter_genes(sl, min_counts=3)  # example threshold
-        sc.pp.filter_cells(sl, min_genes=200)  # example threshold
         sc.pp.normalize_total(sl, target_sum=1e4)
         sc.pp.log1p(sl)
         sc.pp.scale(sl, max_value=10)
-
     all_gene_lists = [sl.var.index for sl in slices]
     common_genes = reduce(np.intersect1d, all_gene_lists)
     # 2. Subset each slice to the common genes, gather coordinates & data
@@ -459,7 +426,9 @@ for k,slices in enumerate(layer_groups):
         sl_sub.image_coor = sl.image_coor
         sl_sub.image_path = sl.image_path
         sl_sub.spatial_prefix = sl.spatial_prefix
+
         coords, image = get_uv_coordinates(sl_sub)  # your custom function
+
         cropped_image, cropped_coor = crop_square_then_resize_square(image, coords,crop_paras[k][i])
 
         # show_clusters(cropped_coor, labels)
@@ -517,8 +486,8 @@ for k,slices in enumerate(layer_groups):
         labels = label_list[i]
 
         feature_matrix = get_gene_feature_matrix(coords, reduced_slice_data, (1024, 1024), patch_size=16)
-        plot_dimensional_images_side_by_side(feature_matrix)
+        # plot_dimensional_images_side_by_side(feature_matrix)
 
-        # plt.imsave("../data/DLPFC/huifang/" + str(k) + "_" + str(i) + "_image.png", image)
-        # np.save("../data/DLPFC/huifang/" + str(k) + "_" + str(i) + "_pca_out.npy", feature_matrix)
-        # np.savez("../data/DLPFC/huifang/" + str(k) + "_" + str(i) + "_validation", coord=coords,label = labels)
+        plt.imsave("../data/DLPFC/huifang/" + str(k) + "_" + str(i) + "_image.png", image)
+        np.save("../data/DLPFC/huifang/" + str(k) + "_" + str(i) + "_pca_out.npy", feature_matrix)
+        np.savez("../data/DLPFC/huifang/" + str(k) + "_" + str(i) + "_validation", coord=coords,label = labels)
